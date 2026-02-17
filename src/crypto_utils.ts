@@ -1,5 +1,5 @@
 import forge from 'node-forge'
-import {BaseWallet, getBytes, SigningKey, solidityPackedKeccak256} from "ethers"
+import { BaseWallet, getBytes, SigningKey, solidityPackedKeccak256 } from "ethers"
 import { ctString, ctUint, ctUint256, itString, itUint, itUint256 } from './types';
 
 const BLOCK_SIZE = 16 // AES block size in bytes
@@ -56,7 +56,7 @@ function validateSecondBlock(r2: Uint8Array | null, ciphertext2: Uint8Array | nu
     if (r2 !== null && r2.length !== BLOCK_SIZE) {
         throw new RangeError("Random2 size must be 128 bits, received " + r2.length + " bytes.")
     }
-    
+
     if (ciphertext2 !== null && ciphertext2.length !== BLOCK_SIZE) {
         throw new RangeError("Ciphertext2 size must be 128 bits, received " + ciphertext2.length + " bytes.")
     }
@@ -100,7 +100,7 @@ export function decrypt(key: Uint8Array, r: Uint8Array, ciphertext: Uint8Array, 
 
 export function generateRSAKeyPair(): { publicKey: Uint8Array; privateKey: Uint8Array } {
     // Generate a new RSA key pair
-    const rsaKeyPair = forge.pki.rsa.generateKeyPair({bits: 2048})
+    const rsaKeyPair = forge.pki.rsa.generateKeyPair({ bits: 2048 })
 
     // Convert keys to DER format
     const privateKey = forge.asn1.toDer(forge.pki.privateKeyToAsn1(rsaKeyPair.privateKey)).data
@@ -201,7 +201,7 @@ export function buildInputText(
     const keyBytes = encodeKey(sender.userKey)
 
     // Encrypt the plaintext using AES key
-    const {ciphertext, r} = encrypt(keyBytes, plaintextBytes)
+    const { ciphertext, r } = encrypt(keyBytes, plaintextBytes)
     const ct = new Uint8Array([...ciphertext, ...r])
 
     // Convert the ciphertext to BigInt
@@ -330,16 +330,18 @@ export function decryptString(ciphertext: ctString, userKey: string): string {
 
     for (let i = 0; i < ciphertext.value.length; i++) {
         const decrypted = decryptUint(BigInt(ciphertext.value[i]), userKey)
-        
+
         encodedStr = new Uint8Array([...encodedStr, ...encodeUint(decrypted)])
     }
 
-    const decoder = new TextDecoder()
+    // Trim trailing zero bytes (padding added by buildStringInputText)
+    let end = encodedStr.length
+    while (end > 0 && encodedStr[end - 1] === 0) {
+        end--
+    }
 
-    // Use replaceAll instead of replace with regex
-    return decoder
-        .decode(encodedStr)
-        .replaceAll('\0', '')
+    const decoder = new TextDecoder()
+    return decoder.decode(new Uint8Array(encodedStr.slice(0, end)))
 }
 
 export function generateRandomAesKeySizeNumber(): string {
@@ -438,8 +440,8 @@ export function prepareIT(
 ): itUint {
     const plaintextBigInt = BigInt(plaintext)
     const bitSize = plaintextBigInt.toString(2).length
-    
-    if (bitSize > MAX_PLAINTEXT_BIT_SIZE / 2) { 
+
+    if (bitSize > MAX_PLAINTEXT_BIT_SIZE / 2) {
         throw new RangeError("Plaintext size must be 128 bits or smaller. To prepare a 256 bit plaintext, use prepareIT256 instead.")
     }
 
@@ -450,7 +452,7 @@ export function prepareIT(
     const keyBytes = encodeKey(sender.userKey)
 
     // Encrypt the plaintext using AES key
-    const {ciphertext, r} = encrypt(keyBytes, plaintextBytes)
+    const { ciphertext, r } = encrypt(keyBytes, plaintextBytes)
     const ct = new Uint8Array([...ciphertext, ...r])
 
     // Convert the ciphertext to BigInt
@@ -529,11 +531,11 @@ export function prepareIT256(
     const ciphertextHighUint = BigInt('0x' + ciphertextHighHex)
     const ciphertextLowUint = BigInt('0x' + ciphertextLowHex)
 
-    return { 
-        ciphertext: { 
-            ciphertextHigh: ciphertextHighUint, 
-            ciphertextLow: ciphertextLowUint 
-        }, 
-        signature 
+    return {
+        ciphertext: {
+            ciphertextHigh: ciphertextHighUint,
+            ciphertextLow: ciphertextLowUint
+        },
+        signature
     }
 }
