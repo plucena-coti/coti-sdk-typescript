@@ -326,22 +326,28 @@ export function decryptUint256(ciphertext: ctUint256, userKey: string): bigint {
 }
 
 export function decryptString(ciphertext: ctString, userKey: string): string {
-    let encodedStr = new Uint8Array()
+    const allBytes: number[] = []
 
     for (let i = 0; i < ciphertext.value.length; i++) {
         const decrypted = decryptUint(BigInt(ciphertext.value[i]), userKey)
+        const chunkBytes = encodeUint(decrypted)
 
-        encodedStr = new Uint8Array([...encodedStr, ...encodeUint(decrypted)])
+        // encodeUint returns 16 bytes (BLOCK_SIZE). 
+        // buildStringInputText uses 8-byte chunks (EIGHT_BYTES).
+        // The relevant 8 bytes are at the end since encodeUint is Big-Endian.
+        for (let j = BLOCK_SIZE - EIGHT_BYTES; j < BLOCK_SIZE; j++) {
+            allBytes.push(chunkBytes[j])
+        }
     }
 
     // Trim trailing zero bytes (padding added by buildStringInputText)
-    let end = encodedStr.length
-    while (end > 0 && encodedStr[end - 1] === 0) {
+    let end = allBytes.length
+    while (end > 0 && allBytes[end - 1] === 0) {
         end--
     }
 
     const decoder = new TextDecoder()
-    return decoder.decode(new Uint8Array(encodedStr.slice(0, end)))
+    return decoder.decode(new Uint8Array(allBytes.slice(0, end)))
 }
 
 export function generateRandomAesKeySizeNumber(): string {
